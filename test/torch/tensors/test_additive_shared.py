@@ -24,14 +24,47 @@ def test___str__(workers):
     assert isinstance(x_sh.__str__(), str)
 
 
-def test_share_get(workers):
+@pytest.mark.parametrize("protocol", ["snn", "fss"])
+@pytest.mark.parametrize("dtype", ["int", "long"])
+@pytest.mark.parametrize("n_workers", [2, 3])
+def test_share_get(workers, protocol, dtype, n_workers):
+    alice, bob, charlie, james = (
+        workers["alice"],
+        workers["bob"],
+        workers["charlie"],
+        workers["james"],
+    )
+    share_holders = [alice, bob, charlie]
+    kwargs = dict(protocol=protocol, crypto_provider=james, dtype=dtype)
 
     t = torch.tensor([1, 2, 3])
-    x = t.share(workers["bob"], workers["alice"], workers["james"])
-
+    x = t.share(*share_holders[:n_workers], **kwargs)
     x = x.get()
 
     assert (x == t).all()
+
+
+@pytest.mark.parametrize("protocol", ["snn", "fss"])
+@pytest.mark.parametrize("dtype", ["int", "long"])
+@pytest.mark.parametrize("n_workers", [2, 3])
+def test_share_inplace_consistency(workers, protocol, dtype, n_workers):
+    """Verify that share_ produces the same output then share"""
+    alice, bob, charlie, james = (
+        workers["alice"],
+        workers["bob"],
+        workers["charlie"],
+        workers["james"],
+    )
+    share_holders = [alice, bob, charlie]
+    kwargs = dict(protocol=protocol, crypto_provider=james, dtype=dtype)
+
+    x1 = torch.tensor([-1.0])
+    x1.fix_precision_(dtype=dtype).share_(*share_holders[:n_workers], **kwargs)
+
+    x2 = torch.tensor([-1.0])
+    x2_sh = x2.fix_precision(dtype=dtype).share(*share_holders[:n_workers], **kwargs)
+
+    assert x1.get().float_prec() == x2_sh.get().float_prec()
 
 
 def test___bool__(workers):
@@ -41,18 +74,6 @@ def test___bool__(workers):
     with pytest.raises(ValueError):
         if x_sh:  # pragma: no cover
             pass
-
-
-def test_share_inplace_consistency(workers):
-    """Verify that share_ produces the same output then share"""
-    bob, alice, james = (workers["bob"], workers["alice"], workers["james"])
-    x1 = torch.tensor([-1.0])
-    x1.fix_precision_().share_(alice, bob, crypto_provider=james)
-
-    x2 = torch.tensor([-1.0])
-    x2_sh = x2.fix_precision().share(alice, bob, crypto_provider=james)
-
-    assert (x1 == x2_sh).get().float_prec()
 
 
 def test_clone(workers):
