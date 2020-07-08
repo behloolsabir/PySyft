@@ -560,7 +560,8 @@ class AdditiveSharingTensor(AbstractTensor):
 
         Args:
             self (AdditiveSharingTensor): the self
-            other (AdditiveSharingTensor or Tensor or int): operand being multiplied with self, can be:
+            other (AdditiveSharingTensor or Tensor or int): operand being multiplied
+            with self, which can be:
                 - a AdditiveSharingTensor
                 - a torch tensor (Int or Long)
                 - or an integer
