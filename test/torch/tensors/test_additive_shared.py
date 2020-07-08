@@ -384,48 +384,19 @@ def test_public_mul(workers):
         workers["charlie"],
     )
 
-    t = torch.tensor([-3.1, 1.0])
-    x = t.fix_prec().share(alice, bob, crypto_provider=james)
-    y = 1
-    z = (x * y).get().float_prec()
-    assert (z == (t * y)).all()
+    for y in [0, 1]:
+        t = torch.tensor([-3.1, 1.0])
+        x = t.fix_prec().share(alice, bob, crypto_provider=james)
+        z = (x * y).get().float_prec()
+        assert (z == (t * y)).all()
 
-    # 3 workers
-    t = torch.tensor([-3.1, 1.0])
-    x = t.fix_prec().share(alice, bob, charlie, crypto_provider=james)
-    y = 1
-    z = (x * y).get().float_prec()
-    assert (z == (t * y)).all()
-
-    t = torch.tensor([-3.1, 1.0])
-    x = t.fix_prec().share(alice, bob, crypto_provider=james)
-    y = 0
-    z = (x * y).get().float_prec()
-    assert (z == (t * y)).all()
-
-    t_x = torch.tensor([-3.1, 1])
-    t_y = torch.tensor([1.0])
-    x = t_x.fix_prec().share(alice, bob, crypto_provider=james)
-    y = t_y.fix_prec()
-    z = x * y
-    z = z.get().float_prec()
-    assert (z == t_x * t_y).all()
-
-    t_x = torch.tensor([-3.1, 1])
-    t_y = torch.tensor([0.0])
-    x = t_x.fix_prec().share(alice, bob, crypto_provider=james)
-    y = t_y.fix_prec()
-    z = x * y
-    z = z.get().float_prec()
-    assert (z == t_x * t_y).all()
-
-    t_x = torch.tensor([-3.1, 1])
-    t_y = torch.tensor([0.0, 2.1])
-    x = t_x.fix_prec().share(alice, bob, crypto_provider=james)
-    y = t_y.fix_prec()
-    z = x * y
-    z = z.get().float_prec()
-    assert (z == t_x * t_y).all()
+    for t_y in [torch.tensor([1.0]), torch.tensor([0.0]), torch.tensor([0.0, 2.1])]:
+        t_x = torch.tensor([-3.1, 1])
+        x = t_x.fix_prec().share(alice, bob, crypto_provider=james)
+        y = t_y.fix_prec()
+        z = x * y
+        z = z.get().float_prec()
+        assert (z == t_x * t_y).all()
 
     # with dtype int
     t_x = torch.tensor([-3.1, 1])
@@ -435,6 +406,13 @@ def test_public_mul(workers):
     z = x * y
     z = z.get().float_prec()
     assert (z == t_x * t_y).all()
+
+    # 3 workers
+    t = torch.tensor([-3.1, 1.0])
+    x = t.fix_prec().share(alice, bob, charlie, crypto_provider=james)
+    y = 1
+    z = (x * y).get().float_prec()
+    assert (z == (t * y)).all()
 
 
 def test_div(workers):

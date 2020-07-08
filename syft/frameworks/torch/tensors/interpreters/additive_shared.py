@@ -570,44 +570,36 @@ class AdditiveSharingTensor(AbstractTensor):
         shares = self.child
         assert equation == "mul" or equation == "matmul"
         cmd = getattr(torch, equation)
-        if isinstance(other, dict):
-            return {
-                worker: (self.modulo(cmd(share, other[worker]))) for worker, share in shares.items()
-            }
+        if isinstance(other, sy.FixedPrecisionTensor):
+            other = other.child
+        other_is_zero = other == 0
+        if not isinstance(other_is_zero, bool):
+            other_is_zero = other_is_zero.any()
+
+        if other_is_zero:
+            res = {}
+            first_it = True
+
+            for worker, share in shares.items():
+                cmd_res = cmd(share, other)
+                if first_it:
+                    first_it = False
+                    zero_shares = self.zero(cmd_res.shape).child
+                res[worker] = self.modulo(cmd(share, other) + zero_shares[worker])
+
+            result = hook_args.hook_response(
+                "_public_mul", res, wrap_type=type(self), wrap_args=self.get_class_attributes()
+            )
+            return result
         else:
-            if isinstance(other, sy.FixedPrecisionTensor):
-                other = other.child
-            other_is_zero = other == 0
-            if not isinstance(other_is_zero, bool):
-                other_is_zero = other_is_zero.any()
-
-            if other_is_zero:
-                res = {}
-                first_it = True
-
-                for worker, share in shares.items():
-                    cmd_res = cmd(share, other)
-                    if first_it:
-                        first_it = False
-                        zero_shares = self.zero(cmd_res.shape).child
-                    res[worker] = self.modulo(cmd(share, other) + zero_shares[worker])
-
-                result = hook_args.hook_response(
-                    "_public_mul", res, wrap_type=type(self), wrap_args=self.get_class_attributes()
-                )
-                return result
-            else:
-                result = {
-                    worker: (self.modulo(cmd(share, other).type(self.torch_dtype)))
-                    for worker, share in shares.items()
-                }
-                result = hook_args.hook_response(
-                    "_public_mul",
-                    result,
-                    wrap_type=type(self),
-                    wrap_args=self.get_class_attributes(),
-                )
-                return result
+            result = {
+                worker: (self.modulo(cmd(share, other).type(self.torch_dtype)))
+                for worker, share in shares.items()
+            }
+            result = hook_args.hook_response(
+                "_public_mul", result, wrap_type=type(self), wrap_args=self.get_class_attributes(),
+            )
+            return result
 
     def mul(self, other):
         """Multiplies two tensors together
